@@ -1,0 +1,22 @@
+{
+  "name": "space-alien-attack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser-based arcade shooter in the classic fixed-shooter style, with fully original alien designs and ship art. Monorepo containing the game client, backend API, and mobile wrapper.",
+  "workspaces": [
+    "client",
+    "server",
+    "mobile"
+  ],
+  "scripts": {
+    "dev:client": "npm run dev --workspace client",
+    "build:client": "npm run build --workspace client",
+    "dev:server": "npm run dev --workspace server",
+    "build:server": "npm run build --workspace server",
+    "prisma:generate": "npm run prisma:generate --workspace server",
+    "prisma:migrate": "npm run prisma:migrate --workspace server"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
