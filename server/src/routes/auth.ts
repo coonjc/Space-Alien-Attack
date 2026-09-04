@@ -38,7 +38,7 @@ authRouter.post('/register', async (req, res) => {
 
   const token = jwt.sign({ userId: user.id }, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
 
-  res.status(201).json({ token, user: { id: user.id, email: user.email } });
+  res.status(201).json({ token, user: { id: user.id, email: user.email, isAdmin: user.isAdmin } });
 });
 
 authRouter.post('/login', async (req, res) => {
@@ -61,7 +61,12 @@ authRouter.post('/login', async (req, res) => {
     return;
   }
 
+  if (user.isBanned) {
+    res.status(403).json({ error: 'This account has been banned' });
+    return;
+  }
+
   const token = jwt.sign({ userId: user.id }, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
 
-  res.json({ token, user: { id: user.id, email: user.email } });
+  res.json({ token, user: { id: user.id, email: user.email, isAdmin: user.isAdmin } });
 });

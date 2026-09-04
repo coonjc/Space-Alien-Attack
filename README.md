@@ -87,6 +87,8 @@ Copy `server/.env.example` to `server/.env` and set:
 | `JWT_EXPIRES_IN` | JWT lifetime (e.g. `7d`)                                   |
 | `PORT`         | Port the Express API listens on                             |
 | `CORS_ORIGIN`  | Comma-separated list of allowed client origins               |
+| `ADMIN_EMAIL`  | Email for the seeded admin account (see below)               |
+| `ADMIN_PASSWORD` | Password for the seeded admin account (see below)          |
 
 `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`/`DB_NAME` are provided as
 convenience/documentation for rebuilding `DATABASE_URL`; only `DATABASE_URL`
@@ -101,14 +103,39 @@ npm run prisma:migrate    # creates/applies a migration against your configured 
 
 Both commands run against whatever `server/.env`'s `DATABASE_URL` points at.
 
+## Admin account & dashboard
+
+Player accounts have an `isAdmin` and an `isBanned` flag (see
+[server/prisma/schema.prisma](server/prisma/schema.prisma)). There is no
+public sign-up path to admin — the first admin account is created (or reset)
+via a seed script that reads `ADMIN_EMAIL`/`ADMIN_PASSWORD` from
+`server/.env`:
+
+```sh
+npm run prisma:seed --workspace server
+```
+
+Re-running it after changing `ADMIN_PASSWORD` in `.env` resets that admin's
+password. Once created, log into the admin dashboard at
+`http://localhost:5173/admin.html` (during `npm run dev:client`) with those
+credentials. From there you can view every player account, **ban/unban**
+them (banned accounts are rejected at `/auth/login` and on every
+authenticated request thereafter), or **permanently delete** an account and
+its stats. Admin accounts can't ban/delete themselves or other admins from
+the UI.
+
 ## API overview
 
-| Method | Path          | Auth | Description                          |
-|--------|---------------|------|----------------------------------------|
-| POST   | `/auth/register` | none | Create an account, returns a JWT     |
-| POST   | `/auth/login`    | none | Log in, returns a JWT                |
-| GET    | `/stats/me`      | JWT  | Get the current user's game stats    |
-| POST   | `/stats/me`      | JWT  | Update the current user's game stats |
+| Method | Path                 | Auth        | Description                              |
+|--------|----------------------|-------------|-------------------------------------------|
+| POST   | `/auth/register`     | none        | Create an account, returns a JWT         |
+| POST   | `/auth/login`        | none        | Log in, returns a JWT (rejects banned users) |
+| GET    | `/stats/me`          | JWT         | Get the current user's game stats        |
+| POST   | `/stats/me`          | JWT         | Update the current user's game stats     |
+| GET    | `/admin/users`       | JWT + admin | List all player accounts and their stats |
+| POST   | `/admin/users/:id/ban`   | JWT + admin | Ban a player account                 |
+| POST   | `/admin/users/:id/unban` | JWT + admin | Lift a ban on a player account        |
+| DELETE | `/admin/users/:id`   | JWT + admin | Permanently delete a player account       |
 
 Protected routes expect `Authorization: Bearer <token>`.
 

@@ -11,6 +11,13 @@ model User {
   id           String       @id @default(uuid())
   email        String       @unique
   passwordHash String
+  // Simple role flag for now — structured as a boolean rather than a
+  // separate Admin table so it's trivial to extend to a proper role enum
+  // later without a breaking schema change.
+  isAdmin      Boolean      @default(false)
+  // Banned users can no longer log in (enforced in /auth/login) and any
+  // existing session is rejected on the next authenticated request.
+  isBanned     Boolean      @default(false)
   createdAt    DateTime     @default(now())
   stats        PlayerStats?
 }
