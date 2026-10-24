@@ -8,6 +8,7 @@ export class UIScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private livesText!: Phaser.GameObjects.Text;
   private messageText!: Phaser.GameObjects.Text;
+  private waveMessageTimer?: Phaser.Time.TimerEvent;
 
   constructor() {
     super({ key: 'UIScene', active: true });
@@ -34,20 +35,35 @@ export class UIScene extends Phaser.Scene {
     }).setOrigin(0.5).setVisible(false);
 
     const gameScene = this.scene.get('GameScene');
-    gameScene.events.on('score-changed', (score: number) => {
+    const onScoreChanged = (score: number): void => {
       this.scoreText.setText(`Score: ${score}`);
-    });
-    gameScene.events.on('lives-changed', (lives: number) => {
+      this.waveMessageTimer?.remove();
+      this.waveMessageTimer = undefined;
+      this.messageText.setText('').setVisible(false);
+    };
+    const onLivesChanged = (lives: number): void => {
       this.livesText.setText(`Lives: ${lives}`);
-    });
-    gameScene.events.on('game-over', (score: number) => {
+    };
+    const onGameOver = (score: number): void => {
+      this.waveMessageTimer?.remove();
+      this.waveMessageTimer = undefined;
       this.messageText
         .setText(`GAME OVER\nFinal Score: ${score}\nPress R to restart`)
         .setVisible(true);
-    });
-    gameScene.events.on('wave-cleared', (wave: number) => {
+      this.game.events.emit('game-over', score);
+    };
+    const onWaveCleared = (wave: number): void => {
+      this.waveMessageTimer?.remove();
       this.messageText.setText(`Wave ${wave} cleared!`).setVisible(true);
-      this.time.delayedCall(1200, () => this.messageText.setVisible(false));
-    });
+      this.waveMessageTimer = this.time.delayedCall(1200, () => {
+        this.waveMessageTimer = undefined;
+        this.messageText.setVisible(false);
+      });
+    };
+
+    gameScene.events.on('score-changed', onScoreChanged);
+    gameScene.events.on('lives-changed', onLivesChanged);
+    gameScene.events.on('game-over', onGameOver);
+    gameScene.events.on('wave-cleared', onWaveCleared);
   }
 }

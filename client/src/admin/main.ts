@@ -37,7 +37,7 @@ function renderLogin(): void {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = `
     <h1>Space Alien Attack — Admin Login</h1>
-    <p style="color:#ffb84d">Requires an account with admin privileges (see server/prisma/seed.ts).</p>
+    <p style="color:#ffb84d">Set <code>ADMIN_EMAIL</code> and <code>ADMIN_PASSWORD</code> in <code>server/.env</code>, then run <code>npm run prisma:seed --workspace server</code>.</p>
     <form id="login-form" style="display:flex; flex-direction:column; gap:8px; max-width:320px;">
       <label>Email<br/><input type="email" id="email" required style="width:100%; padding:6px;" /></label>
       <label>Password<br/><input type="password" id="password" required style="width:100%; padding:6px;" /></label>
@@ -54,7 +54,7 @@ function renderLogin(): void {
     event.preventDefault();
     errorEl.textContent = '';
 
-    const email = (document.getElementById('email') as HTMLInputElement).value;
+    const email = (document.getElementById('email') as HTMLInputElement).value.trim().toLowerCase();
     const password = (document.getElementById('password') as HTMLInputElement).value;
 
     try {
@@ -66,7 +66,10 @@ function renderLogin(): void {
       const data = await res.json();
 
       if (!res.ok) {
-        errorEl.textContent = data.error ?? 'Login failed';
+        const message = data.error ?? 'Login failed';
+        errorEl.textContent = res.status === 401
+          ? `${message}. Confirm the admin account was seeded from server/.env.`
+          : message;
         return;
       }
       if (!data.user?.isAdmin) {
@@ -77,8 +80,10 @@ function renderLogin(): void {
       token = data.token;
       sessionStorage.setItem(TOKEN_STORAGE_KEY, token!);
       render();
-    } catch {
-      errorEl.textContent = 'Could not reach the server';
+    } catch (error) {
+      errorEl.textContent = error instanceof Error && error.message
+        ? `Could not reach the server: ${error.message}`
+        : 'Could not reach the server. Start the API server and try again.';
     }
   });
 }
@@ -134,7 +139,15 @@ async function loadUsers(): Promise<void> {
   const body = document.getElementById('users-body')!;
   errorEl.textContent = '';
 
-  const res = await apiFetch('/admin/users');
+  let res: Response;
+  try {
+    res = await apiFetch('/admin/users');
+  } catch (error) {
+    errorEl.textContent = error instanceof Error
+      ? `Could not reach the admin API: ${error.message}`
+      : 'Could not reach the admin API.';
+    return;
+  }
 
   if (res.status === 401 || res.status === 403) {
     logout();

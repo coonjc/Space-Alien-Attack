@@ -13,14 +13,21 @@ function isValidEmail(email: unknown): email is string {
 }
 
 authRouter.post('/register', async (req, res) => {
-  const { email, password } = req.body ?? {};
+  const { email, password, displayName } = req.body ?? {};
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : email;
 
-  if (!isValidEmail(email) || typeof password !== 'string' || password.length < 8) {
+  if (!isValidEmail(normalizedEmail) || typeof password !== 'string' || password.length < 8) {
     res.status(400).json({ error: 'A valid email and a password of at least 8 characters are required' });
     return;
   }
+  if (displayName !== undefined && (typeof displayName !== 'string' || displayName.trim().length > 32)) {
+    res.status(400).json({ error: 'displayName must be a string of at most 32 characters' });
+    return;
+  }
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } }
+  });
   if (existing) {
     res.status(409).json({ error: 'An account with that email already exists' });
     return;
@@ -30,9 +37,9 @@ authRouter.post('/register', async (req, res) => {
 
   const user = await prisma.user.create({
     data: {
-      email,
+      email: normalizedEmail,
       passwordHash,
-      stats: { create: {} }
+      stats: { create: { displayName: typeof displayName === 'string' ? displayName.trim() || 'Anonymous' : 'Anonymous' } }
     }
   });
 
@@ -43,13 +50,16 @@ authRouter.post('/register', async (req, res) => {
 
 authRouter.post('/login', async (req, res) => {
   const { email, password } = req.body ?? {};
+  const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : email;
 
-  if (!isValidEmail(email) || typeof password !== 'string') {
+  if (!isValidEmail(normalizedEmail) || typeof password !== 'string') {
     res.status(400).json({ error: 'Email and password are required' });
     return;
   }
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: normalizedEmail, mode: 'insensitive' } }
+  });
   if (!user) {
     res.status(401).json({ error: 'Invalid email or password' });
     return;

@@ -4,6 +4,7 @@ import { env } from './lib/env';
 import { authRouter } from './routes/auth';
 import { statsRouter } from './routes/stats';
 import { adminRouter } from './routes/admin';
+import { leaderboardRouter } from './routes/leaderboard';
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.get('/health', (_req, res) => {
 
 app.use('/auth', authRouter);
 app.use('/stats', statsRouter);
+app.use('/leaderboard', leaderboardRouter);
 app.use('/admin', adminRouter);
 
 app.listen(env.port, () => {

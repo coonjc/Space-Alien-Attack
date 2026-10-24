@@ -38,9 +38,9 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     this.generatePlayerTexture();
-    this.generateAlienTexture(TEXTURES.ALIEN_ROW_A, 0xff4dd8); // magenta - front row
-    this.generateAlienTexture(TEXTURES.ALIEN_ROW_B, 0x9d4dff); // violet - mid row
-    this.generateAlienTexture(TEXTURES.ALIEN_ROW_C, 0xffb84d); // amber - back row
+    this.generateAlienTexture(TEXTURES.ALIEN_ROW_A, 0xff4dd8, 'winged'); // magenta - front row
+    this.generateAlienTexture(TEXTURES.ALIEN_ROW_B, 0x9d4dff, 'crystalline'); // violet - mid row
+    this.generateAlienTexture(TEXTURES.ALIEN_ROW_C, 0xffb84d, 'tendrilled'); // amber - back row
     this.generateBulletTextures();
 
     this.scene.start('GameScene');
@@ -67,23 +67,42 @@ export class BootScene extends Phaser.Scene {
   }
 
   /** "Driftlings" — rounded blob-with-tendrils silhouette, original to this game. */
-  private generateAlienTexture(key: string, color: number): void {
+  private generateAlienTexture(key: string, color: number, shape: 'winged' | 'crystalline' | 'tendrilled'): void {
     const g = this.add.graphics();
     const w = 36;
     const h = 28;
 
     g.fillStyle(color, 1);
-    // Rounded blob body.
-    g.fillEllipse(w / 2, h * 0.45, w * 0.8, h * 0.65);
-
-    // Two small tendrils hanging below.
-    g.fillRect(w * 0.25, h * 0.55, 4, h * 0.4);
-    g.fillRect(w * 0.71, h * 0.55, 4, h * 0.4);
+    if (shape === 'winged') {
+      g.fillTriangle(0, h * 0.35, w * 0.35, h * 0.2, w * 0.32, h * 0.75);
+      g.fillTriangle(w, h * 0.35, w * 0.65, h * 0.2, w * 0.68, h * 0.75);
+      g.fillEllipse(w / 2, h * 0.42, w * 0.52, h * 0.68);
+      g.fillTriangle(w * 0.38, h * 0.68, w * 0.45, h, w * 0.5, h * 0.68);
+      g.fillTriangle(w * 0.62, h * 0.68, w * 0.55, h, w * 0.5, h * 0.68);
+    } else if (shape === 'crystalline') {
+      g.fillPoints([
+        new Phaser.Geom.Point(w * 0.5, 0),
+        new Phaser.Geom.Point(w * 0.88, h * 0.22),
+        new Phaser.Geom.Point(w, h * 0.55),
+        new Phaser.Geom.Point(w * 0.72, h * 0.9),
+        new Phaser.Geom.Point(w * 0.5, h * 0.72),
+        new Phaser.Geom.Point(w * 0.28, h * 0.9),
+        new Phaser.Geom.Point(0, h * 0.55),
+        new Phaser.Geom.Point(w * 0.12, h * 0.22)
+      ], true);
+      g.fillTriangle(w * 0.32, h * 0.18, w * 0.5, h * 0.3, w * 0.28, h * 0.42);
+      g.fillTriangle(w * 0.68, h * 0.18, w * 0.5, h * 0.3, w * 0.72, h * 0.42);
+    } else {
+      g.fillEllipse(w / 2, h * 0.38, w * 0.76, h * 0.62);
+      g.fillRect(w * 0.2, h * 0.55, 3, h * 0.42);
+      g.fillRect(w * 0.46, h * 0.62, 3, h * 0.38);
+      g.fillRect(w * 0.72, h * 0.55, 3, h * 0.42);
+    }
 
     // Simple eye markings.
     g.fillStyle(0x05060a, 1);
-    g.fillCircle(w * 0.35, h * 0.4, 3);
-    g.fillCircle(w * 0.65, h * 0.4, 3);
+    g.fillCircle(w * 0.38, h * 0.38, 2.5);
+    g.fillCircle(w * 0.62, h * 0.38, 2.5);
 
     g.generateTexture(key, w, h);
     g.destroy();
