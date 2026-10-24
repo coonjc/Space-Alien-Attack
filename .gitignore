@@ -36,3 +36,4 @@ mobile/.gradle/
 *.tsbuildinfo
 .env.production
 coverage/
+issues/

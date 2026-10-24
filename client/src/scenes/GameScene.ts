@@ -199,7 +199,6 @@ export class GameScene extends Phaser.Scene {
       }
     }
     if (alienReachedPlayer) this.damagePlayer();
-    void time;
   }
 
   private cleanupOffscreenBullets(): void {
