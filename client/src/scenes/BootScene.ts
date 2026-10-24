@@ -24,7 +24,12 @@ export const TEXTURES = {
   ALIEN_ROW_B: 'tex-alien-row-b',
   ALIEN_ROW_C: 'tex-alien-row-c',
   PLAYER_BULLET: 'tex-player-bullet',
-  ALIEN_BULLET: 'tex-alien-bullet'
+  ALIEN_BULLET: 'tex-alien-bullet',
+  PARTICLE_1: 'tex-particle-1',
+  PARTICLE_2: 'tex-particle-2',
+  POWERUP_TRIPLE_SHOT: 'tex-powerup-triple-shot',
+  POWERUP_SHIELD: 'tex-powerup-shield',
+  POWERUP_EXPLOSIVE: 'tex-powerup-explosive'
 } as const;
 
 export class BootScene extends Phaser.Scene {
@@ -120,5 +125,37 @@ export class BootScene extends Phaser.Scene {
     alien.fillCircle(3, 3, 3);
     alien.generateTexture(TEXTURES.ALIEN_BULLET, 6, 6);
     alien.destroy();
+
+    // Particle textures for explosion effects
+    const particle1 = this.add.graphics();
+    particle1.fillStyle(0xffff00, 1); // yellow sparks
+    particle1.fillCircle(2, 2, 2);
+    particle1.generateTexture(TEXTURES.PARTICLE_1, 4, 4);
+    particle1.destroy();
+
+    const particle2 = this.add.graphics();
+    particle2.fillStyle(0xffaa00, 1); // orange glow
+    particle2.fillCircle(3, 3, 3);
+    particle2.generateTexture(TEXTURES.PARTICLE_2, 6, 6);
+    particle2.destroy();
+
+    // Power-up textures
+    const tripleShot = this.add.graphics();
+    tripleShot.fillStyle(0x00ffff, 1); // cyan for triple shot
+    tripleShot.fillTriangle(0, 0, 8, 8, 0, 8);
+    tripleShot.generateTexture(TEXTURES.POWERUP_TRIPLE_SHOT, 8, 8);
+    tripleShot.destroy();
+
+    const shield = this.add.graphics();
+    shield.fillStyle(0x00ff00, 1); // green for shield
+    shield.fillEllipse(4, 4, 8, 6);
+    shield.generateTexture(TEXTURES.POWERUP_SHIELD, 8, 6);
+    shield.destroy();
+
+    const explosive = this.add.graphics();
+    explosive.fillStyle(0xff0000, 1); // red for explosive
+    explosive.fillEllipse(4, 4, 5, 5);
+    explosive.generateTexture(TEXTURES.POWERUP_EXPLOSIVE, 8, 6);
+    explosive.destroy();
   }
 }
