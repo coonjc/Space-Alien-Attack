@@ -9,19 +9,90 @@
         margin: 0;
         padding: 0;
         background: #05060a;
-        overflow: hidden;
-        height: 100%;
+        min-height: 100%;
+        color: #e6f7f7;
+        font-family: 'Segoe UI', Roboto, sans-serif;
       }
       #app {
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 100vh;
+      }
+      main {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 24px;
+        max-width: 960px;
+        margin: 24px auto;
+        padding: 0 16px;
+      }
+      aside {
+        width: 300px;
+        padding: 16px;
+        border: 1px solid #1c6870;
+        border-radius: 8px;
+        background: #0b1119;
+      }
+      h1, h2 { margin-top: 0; }
+      label { display: block; margin: 10px 0; }
+      input {
+        box-sizing: border-box;
+        width: 100%;
+        margin-top: 4px;
+        padding: 8px;
+        color: #e6f7f7;
+        background: #05060a;
+        border: 1px solid #334155;
+      }
+      button {
+        margin: 4px 4px 4px 0;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      #account-status, #leaderboard-status { min-height: 1.25em; color: #ffb84d; }
+      #leaderboard { width: 100%; border-collapse: collapse; }
+      #leaderboard td, #leaderboard th {
+        padding: 6px 4px;
+        text-align: left;
+        border-bottom: 1px solid #263442;
+      }
+      #leaderboard td:last-child, #leaderboard th:last-child { text-align: right; }
+      @media (max-width: 800px) {
+        main { flex-direction: column; align-items: center; }
+        aside { box-sizing: border-box; width: min(480px, 100%); }
       }
     </style>
   </head>
   <body>
-    <div id="app"></div>
+    <main>
+      <div id="app"></div>
+      <aside>
+        <section aria-labelledby="account-heading">
+          <h1 id="account-heading">Player account</h1>
+          <p id="account-status" aria-live="polite"></p>
+          <form id="account-form">
+            <label for="display-name">Leaderboard name</label>
+            <input id="display-name" name="displayName" maxlength="32" autocomplete="nickname" placeholder="Anonymous" />
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" required autocomplete="email" />
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" minlength="8" required autocomplete="current-password" />
+            <button id="login" type="submit">Log in</button>
+            <button id="register" type="button">Create account</button>
+            <button id="logout" type="button" hidden>Log out</button>
+          </form>
+        </section>
+        <section aria-labelledby="leaderboard-heading">
+          <h2 id="leaderboard-heading">Top players</h2>
+          <p id="leaderboard-status" aria-live="polite">Loading scores…</p>
+          <table id="leaderboard">
+            <thead><tr><th>Rank</th><th>Player</th><th>Score</th></tr></thead>
+            <tbody id="leaderboard-body"></tbody>
+          </table>
+        </section>
+      </aside>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -132,12 +132,17 @@ the UI.
 | POST   | `/auth/login`        | none        | Log in, returns a JWT (rejects banned users) |
 | GET    | `/stats/me`          | JWT         | Get the current user's game stats        |
 | POST   | `/stats/me`          | JWT         | Update the current user's game stats     |
+| GET    | `/leaderboard?limit=10` | none      | List public top scores (maximum 100)     |
 | GET    | `/admin/users`       | JWT + admin | List all player accounts and their stats |
 | POST   | `/admin/users/:id/ban`   | JWT + admin | Ban a player account                 |
 | POST   | `/admin/users/:id/unban` | JWT + admin | Lift a ban on a player account        |
 | DELETE | `/admin/users/:id`   | JWT + admin | Permanently delete a player account       |
 
-Protected routes expect `Authorization: Bearer <token>`.
+Protected routes expect `Authorization: Bearer <token>`. Players can create
+an account or log in from the game page. Their game-over scores are submitted
+to `/stats/me`; the public leaderboard shows the top scores and player display
+names. Set `VITE_API_BASE` when the API is hosted somewhere other than
+`http://localhost:3000`.
 
 ## Building for production
 

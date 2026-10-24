@@ -25,7 +25,27 @@ model User {
 model PlayerStats {
   userId      String   @id
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  highScore   Int      @default(0)
-  gamesPlayed Int      @default(0)
-  updatedAt   DateTime @updatedAt
+
+  // Core scoring metrics
+  highScore    Int      @default(0)
+  totalScore   Int      @default(0)
+  gamesPlayed  Int      @default(0)
+  displayName  String   @default("Anonymous")
+
+  // Wave progression tracking
+  currentWave  Int      @default(1)
+  bestWave     Int      @default(1)
+
+  // Session statistics
+  sessionTime  Int      @default(0) // milliseconds
+  aliensKilled Int      @default(0)
+
+  // Additional performance metrics
+  accuracy     Float    @default(0.0)
+  shotsFired   Int      @default(0)
+  shotsHit     Int      @default(0)
+
+  updatedAt    DateTime @updatedAt
+
+  @@index([highScore], name: "idx_high_score")
 }

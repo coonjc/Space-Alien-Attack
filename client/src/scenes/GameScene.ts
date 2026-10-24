@@ -26,6 +26,8 @@ const PLAYER_SPEED = 260;
 const PLAYER_BULLET_SPEED = 420;
 const ALIEN_BULLET_SPEED = 220;
 const PLAYER_FIRE_COOLDOWN_MS = 300;
+const PLAYER_STARTING_LIVES = 3;
+const PLAYER_INVULNERABILITY_MS = 1500;
 
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -43,9 +45,10 @@ export class GameScene extends Phaser.Scene {
 
   private lastFiredAt = 0;
   private score = 0;
-  private lives = 3;
+  private lives = PLAYER_STARTING_LIVES;
   private wave = 1;
   private isGameOver = false;
+  private playerInvulnerable = false;
 
   constructor() {
     super('GameScene');
@@ -53,10 +56,14 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.score = 0;
-    this.lives = 3;
+    this.lives = PLAYER_STARTING_LIVES;
     this.wave = 1;
     this.isGameOver = false;
+    this.playerInvulnerable = false;
     this.alienDirection = 1;
+    this.alienMoveTimer = 0;
+    this.alienStepDistance = 6;
+    this.lastFiredAt = 0;
 
     this.cameras.main.setBackgroundColor('#05060a');
 
@@ -66,6 +73,7 @@ export class GameScene extends Phaser.Scene {
     this.playerBullets = this.physics.add.group();
     this.alienBullets = this.physics.add.group();
 
+    this.aliens = this.physics.add.group();
     this.spawnAlienWave();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -88,6 +96,15 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    if (!this.player.active) {
+      this.player.setActive(true).setVisible(true);
+    }
+    if (!this.player.body) {
+      this.physics.add.existing(this.player);
+      this.player.setCollideWorldBounds(true);
+    }
+    if (!this.player.body) return;
+
     this.handlePlayerMovement(time);
     this.updateAlienFormation(time, delta);
     this.updateAlienFire(time);
@@ -99,7 +116,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   private spawnAlienWave(): void {
-    this.aliens = this.physics.add.group();
     const rowTextures = [TEXTURES.ALIEN_ROW_A, TEXTURES.ALIEN_ROW_B, TEXTURES.ALIEN_ROW_C];
 
     for (let row = 0; row < ALIEN_ROWS; row++) {
@@ -143,6 +159,7 @@ export class GameScene extends Phaser.Scene {
 
     let hitEdge = false;
     this.aliens.children.iterate((child) => {
+      if (!child) return true;
       const alien = child as Phaser.Physics.Arcade.Sprite;
       if (!alien.active) return true;
       alien.x += this.alienStepDistance * this.alienDirection;
@@ -155,6 +172,7 @@ export class GameScene extends Phaser.Scene {
     if (hitEdge) {
       this.alienDirection = this.alienDirection === 1 ? -1 : 1;
       this.aliens.children.iterate((child) => {
+        if (!child) return true;
         const alien = child as Phaser.Physics.Arcade.Sprite;
         if (alien.active) alien.y += ALIEN_STEP_DOWN;
         return true;
@@ -172,24 +190,27 @@ export class GameScene extends Phaser.Scene {
       bullet.setVelocityY(ALIEN_BULLET_SPEED);
     }
 
-    // Aliens reaching the bottom of the screen ends the game immediately.
+    let alienReachedPlayer = false;
     for (const alienObj of activeAliens) {
       const alien = alienObj as Phaser.Physics.Arcade.Sprite;
       if (alien.y >= this.player.y) {
-        this.triggerGameOver();
-        break;
+        alien.destroy();
+        alienReachedPlayer = true;
       }
     }
+    if (alienReachedPlayer) this.damagePlayer();
     void time;
   }
 
   private cleanupOffscreenBullets(): void {
     this.playerBullets.children.iterate((child) => {
+      if (!child) return true;
       const bullet = child as Phaser.Physics.Arcade.Sprite;
       if (bullet.active && bullet.y < -20) bullet.destroy();
       return true;
     });
     this.alienBullets.children.iterate((child) => {
+      if (!child) return true;
       const bullet = child as Phaser.Physics.Arcade.Sprite;
       if (bullet.active && bullet.y > WORLD_HEIGHT + 20) bullet.destroy();
       return true;
@@ -219,16 +240,24 @@ export class GameScene extends Phaser.Scene {
   };
 
   private damagePlayer(): void {
-    if (this.isGameOver) return;
+    if (this.isGameOver || this.playerInvulnerable) return;
+    this.player.setActive(true).setVisible(true).setAlpha(1);
     this.lives -= 1;
     this.events.emit('lives-changed', this.lives);
     if (this.lives <= 0) {
       this.triggerGameOver();
+      return;
     }
+
+    this.playerInvulnerable = true;
+    this.time.delayedCall(PLAYER_INVULNERABILITY_MS, () => {
+      this.playerInvulnerable = false;
+      this.player.setActive(true).setVisible(true).setAlpha(1);
+    });
   }
 
   private triggerGameOver(): void {
-    if (this.isGameOver) return;
+    if (this.isGameOver || this.lives > 0) return;
     this.isGameOver = true;
     this.physics.pause();
     this.events.emit('game-over', this.score);

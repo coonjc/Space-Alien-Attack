@@ -10,26 +10,31 @@ const SALT_ROUNDS = 10;
  * after changing ADMIN_PASSWORD in .env will reset that admin's password.
  */
 async function main(): Promise<void> {
-  const email = process.env.ADMIN_EMAIL;
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
 
   if (!email || !password) {
-    console.log('ADMIN_EMAIL / ADMIN_PASSWORD not set in .env — skipping admin seed.');
-    return;
+    throw new Error('Set ADMIN_EMAIL and ADMIN_PASSWORD in server/.env before running the admin seed.');
   }
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  const admin = await prisma.user.upsert({
-    where: { email },
-    update: { passwordHash, isAdmin: true, isBanned: false },
-    create: {
-      email,
-      passwordHash,
-      isAdmin: true,
-      stats: { create: {} }
-    }
+  const existingAdmin = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } }
   });
+  const admin = existingAdmin
+    ? await prisma.user.update({
+      where: { id: existingAdmin.id },
+      data: { passwordHash, isAdmin: true, isBanned: false }
+    })
+    : await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        isAdmin: true,
+        stats: { create: {} }
+      }
+    });
 
   console.log(`Admin account ready: ${admin.email}`);
 }

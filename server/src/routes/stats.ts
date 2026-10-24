@@ -5,45 +5,69 @@ import { requireAuth, type AuthenticatedRequest } from '../middleware/auth';
 export const statsRouter = Router();
 
 statsRouter.get('/me', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const stats = await prisma.playerStats.findUnique({ where: { userId: req.userId! } });
+  try {
+    const stats = await prisma.playerStats.findUnique({ where: { userId: req.userId! } });
+    if (!stats) {
+      res.status(404).json({ error: 'No stats found for this user' });
+      return;
+    }
 
-  if (!stats) {
-    res.status(404).json({ error: 'No stats found for this user' });
-    return;
+    res.json(stats);
+  } catch (err) {
+    console.error('Failed to fetch player stats:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-
-  res.json(stats);
 });
 
 statsRouter.post('/me', requireAuth, async (req: AuthenticatedRequest, res) => {
-  const { highScore, gamesPlayed } = req.body ?? {};
+  const { highScore, gamesPlayed, displayName } = req.body ?? {};
+  const maxInt = 2_147_483_647;
 
-  if (highScore !== undefined && typeof highScore !== 'number') {
-    res.status(400).json({ error: 'highScore must be a number' });
+  if (highScore !== undefined && (!Number.isInteger(highScore) || highScore < 0 || highScore > maxInt)) {
+    res.status(400).json({ error: 'highScore must be a non-negative integer' });
     return;
   }
-  if (gamesPlayed !== undefined && typeof gamesPlayed !== 'number') {
-    res.status(400).json({ error: 'gamesPlayed must be a number' });
+  if (gamesPlayed !== undefined && (!Number.isInteger(gamesPlayed) || gamesPlayed < 0 || gamesPlayed > maxInt)) {
+    res.status(400).json({ error: 'gamesPlayed must be a non-negative integer' });
+    return;
+  }
+  if (displayName !== undefined && (typeof displayName !== 'string' || displayName.trim().length > 32)) {
+    res.status(400).json({ error: 'displayName must be a string of at most 32 characters' });
+    return;
+  }
+  if (highScore === undefined && gamesPlayed === undefined && displayName === undefined) {
+    res.status(400).json({ error: 'At least one stat must be provided' });
     return;
   }
 
-  const existing = await prisma.playerStats.findUnique({ where: { userId: req.userId! } });
+  try {
+    const existing = await prisma.playerStats.findUnique({ where: { userId: req.userId! } });
+    const score = highScore as number | undefined;
+    const games = gamesPlayed as number | undefined;
+    const nextHighScore = Math.max(existing?.highScore ?? 0, score ?? 0);
+    const nextGamesPlayed = (existing?.gamesPlayed ?? 0) + (games ?? (score !== undefined ? 1 : 0));
+    const normalizedName = typeof displayName === 'string' ? displayName.trim() || 'Anonymous' : undefined;
 
-  const nextHighScore = Math.max(existing?.highScore ?? 0, highScore ?? 0);
-  const nextGamesPlayed = (existing?.gamesPlayed ?? 0) + (gamesPlayed ?? (highScore !== undefined ? 1 : 0));
+    const stats = await prisma.playerStats.upsert({
+      where: { userId: req.userId! },
+      create: {
+        userId: req.userId!,
+        highScore: score ?? 0,
+        totalScore: score ?? 0,
+        gamesPlayed: games ?? (score !== undefined ? 1 : 0),
+        ...(normalizedName !== undefined ? { displayName: normalizedName } : {})
+      },
+      update: {
+        highScore: nextHighScore,
+        ...(score !== undefined ? { totalScore: { increment: score } } : {}),
+        gamesPlayed: nextGamesPlayed,
+        ...(normalizedName !== undefined ? { displayName: normalizedName } : {})
+      }
+    });
 
-  const stats = await prisma.playerStats.upsert({
-    where: { userId: req.userId! },
-    create: {
-      userId: req.userId!,
-      highScore: highScore ?? 0,
-      gamesPlayed: gamesPlayed ?? 0
-    },
-    update: {
-      highScore: nextHighScore,
-      gamesPlayed: nextGamesPlayed
-    }
-  });
-
-  res.json(stats);
+    res.json(stats);
+  } catch (err) {
+    console.error('Failed to update player stats:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
