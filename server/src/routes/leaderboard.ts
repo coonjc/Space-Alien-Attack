@@ -9,7 +9,13 @@ export const leaderboardRouter = Router();
  * (gamesPlayed > 0) and have a high score > 0 make the board.
  */
 leaderboardRouter.get('/', async (req, res) => {
-  const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? '10'), 10) || 10, 1), 100);
+  let limit = parseInt(String(req.query.limit ?? '10'), 10);
+  
+  // Validate and sanitize input
+  if (isNaN(limit)) {
+    limit = 10;
+  }
+  limit = Math.min(Math.max(limit || 10, 1), 100);
 
   try {
     const users = await prisma.user.findMany({
