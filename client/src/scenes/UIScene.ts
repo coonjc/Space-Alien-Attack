@@ -60,10 +60,23 @@ export class UIScene extends Phaser.Scene {
         this.messageText.setVisible(false);
       });
     };
+    const onPaused = (): void => {
+      this.messageText.setText('PAUSED').setVisible(true);
+    };
+    const onResumed = (score: number): void => {
+      if (this.messageText.visible) {
+        this.scoreText.setText(`Score: ${score}`);
+        this.waveMessageTimer?.remove();
+        this.waveMessageTimer = undefined;
+        this.messageText.setText('').setVisible(false);
+      }
+    };
 
     gameScene.events.on('score-changed', onScoreChanged);
     gameScene.events.on('lives-changed', onLivesChanged);
     gameScene.events.on('game-over', onGameOver);
     gameScene.events.on('wave-cleared', onWaveCleared);
+    gameScene.events.on('paused', onPaused);
+    gameScene.events.on('resumed', onResumed);
   }
 }

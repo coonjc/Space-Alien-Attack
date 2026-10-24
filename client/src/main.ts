@@ -10,7 +10,8 @@ import {
   logout,
   register,
   submitScore,
-  type LeaderboardEntry
+  type LeaderboardEntry,
+  getIsOffline
 } from './api';
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -43,6 +44,11 @@ const registerButton = document.getElementById('register') as HTMLButtonElement;
 const logoutButton = document.getElementById('logout') as HTMLButtonElement;
 const leaderboardStatus = document.getElementById('leaderboard-status')!;
 const leaderboardBody = document.getElementById('leaderboard-body')!;
+
+// Show offline mode status if applicable
+if (getIsOffline()) {
+  accountStatus.textContent = 'Offline Mode: Scores saved locally. Press F5 to sync when online.';
+}
 
 displayNameInput.value = getSavedDisplayName();
 emailInput.value = getSavedEmail() ?? '';
@@ -106,12 +112,22 @@ function renderLeaderboard(entries: LeaderboardEntry[]): void {
   });
 }
 
+game.events.on('paused', () => {
+  accountStatus.textContent = 'Game paused. Your score will be saved when resumed.';
+});
+
+game.events.on('resumed', (score: number) => {
+  accountStatus.textContent = `Score ${score.toLocaleString()} - Game resumed.`;
+});
+
 game.events.on('game-over', async (score: number) => {
   const displayName = displayNameInput.value.trim() || 'Anonymous';
   accountStatus.textContent = 'Submitting score…';
   try {
     await submitScore(score, displayName);
-    accountStatus.textContent = `Score ${score.toLocaleString()} submitted.`;
+    accountStatus.textContent = getIsOffline() 
+      ? `Score ${score.toLocaleString()} cached for later upload.` 
+      : `Score ${score.toLocaleString()} submitted.`;
     await refreshLeaderboard();
   } catch (error) {
     accountStatus.textContent = error instanceof Error ? error.message : 'Could not submit score.';
