@@ -51,13 +51,14 @@
         cursor: pointer;
       }
       #account-status, #leaderboard-status { min-height: 1.25em; color: #ffb84d; }
-      #leaderboard { width: 100%; border-collapse: collapse; }
-      #leaderboard td, #leaderboard th {
+      #leaderboard, .leaderboard { width: 100%; border-collapse: collapse; }
+      #leaderboard td, #leaderboard th, .leaderboard td, .leaderboard th {
         padding: 6px 4px;
         text-align: left;
         border-bottom: 1px solid #263442;
       }
-      #leaderboard td:last-child, #leaderboard th:last-child { text-align: right; }
+      #leaderboard td:last-child, #leaderboard th:last-child,
+      .leaderboard td:last-child, .leaderboard th:last-child { text-align: right; }
       @media (max-width: 800px) {
         main { flex-direction: column; align-items: center; }
         aside { box-sizing: border-box; width: min(480px, 100%); }
@@ -71,6 +72,7 @@
         <section aria-labelledby="account-heading">
           <h1 id="account-heading">Player account</h1>
           <p id="account-status" aria-live="polite"></p>
+          <button id="retry-scores" type="button" hidden>Retry pending score uploads</button>
           <form id="account-form">
             <label for="display-name">Leaderboard name</label>
             <input id="display-name" name="displayName" maxlength="32" autocomplete="nickname" placeholder="Anonymous" />
@@ -89,6 +91,19 @@
           <table id="leaderboard">
             <thead><tr><th>Rank</th><th>Player</th><th>Score</th></tr></thead>
             <tbody id="leaderboard-body"></tbody>
+          </table>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+            <button id="leaderboard-previous" type="button" disabled>Previous</button>
+            <span id="leaderboard-page" aria-live="polite"></span>
+            <button id="leaderboard-next" type="button" disabled>Next</button>
+          </div>
+        </section>
+        <section aria-labelledby="local-leaderboard-heading">
+          <h2 id="local-leaderboard-heading">Local high scores</h2>
+          <p id="local-leaderboard-status" aria-live="polite">Loading local scores…</p>
+          <table class="leaderboard">
+            <thead><tr><th>Rank</th><th>Player</th><th>Score</th></tr></thead>
+            <tbody id="local-leaderboard-body"></tbody>
           </table>
         </section>
       </aside>
