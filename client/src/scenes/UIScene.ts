@@ -148,6 +148,10 @@ export class UIScene extends Phaser.Scene {
         this.messageText.setText('').setVisible(false);
       }
     };
+    const onGameRestarted = (): void => {
+      // Clear the game over message when game restarts
+      this.messageText.setText('').setVisible(false);
+    };
 
     gameScene.events.on('score-changed', onScoreChanged);
     gameScene.events.on('lives-changed', onLivesChanged);
@@ -161,6 +165,7 @@ export class UIScene extends Phaser.Scene {
     gameScene.events.on('wave-cleared', onWaveCleared);
     gameScene.events.on('paused', onPaused);
     gameScene.events.on('resumed', onResumed);
+    gameScene.events.on('game-restarted', onGameRestarted);
     gameScene.events.once('shutdown', () => {
       gameScene.events.off('score-changed', onScoreChanged);
       gameScene.events.off('lives-changed', onLivesChanged);
@@ -173,6 +178,7 @@ export class UIScene extends Phaser.Scene {
       gameScene.events.off('wave-cleared', onWaveCleared);
       gameScene.events.off('paused', onPaused);
       gameScene.events.off('resumed', onResumed);
+      gameScene.events.off('game-restarted', onGameRestarted);
       this.waveMessageTimer?.remove();
       this.achievementToastTimer?.remove();
     });

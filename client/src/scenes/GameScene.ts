@@ -97,7 +97,8 @@ export class GameScene extends Phaser.Scene {
 
   private alienDirection: 1 | -1 = 1;
   private alienMoveTimer = 0;
-  private nextAlienFireAt = 0;
+  private nextAlienFireAt = Infinity; // Start with infinite time - no shooting until game starts
+  private isGameStarted = false; // Flag to track if game has started (after key press)
   private currentWaveConfig!: WaveConfig;
 
   private lastFiredAt = 0;
@@ -117,15 +118,14 @@ export class GameScene extends Phaser.Scene {
   // Pause state
   private isPaused = false;
   private pauseOverlay!: Phaser.GameObjects.Text;
+  private startMessage!: Phaser.GameObjects.Text; // "Press any key to start" message
 
   constructor() {
     super('GameScene');
   }
 
   create(): void {
-    this.score = 0;
     this.submissionId = createSubmissionId();
-    this.lives = PLAYER_STARTING_LIVES;
     this.wave = 1;
     this.isGameOver = false;
     this.playerInvulnerable = false;
@@ -137,16 +137,14 @@ export class GameScene extends Phaser.Scene {
     this.isPaused = false;
     this.comboCount = 0;
     this.comboExpiresAt = 0;
-    this.comboResetTimer?.remove();
+    if (this.comboResetTimer) {
+      this.comboResetTimer.remove();
+    }
     this.weaponLevel = 0;
     this.unlockedAchievements = this.loadUnlockedAchievements();
     this.activePowerUps.clear();
     this.shieldVisual = undefined;
 
-    // Reset particle emitter position
-    if (this.particleEmitter) {
-      this.particleEmitter.destroy();
-    }
     this.cameras.main.setBackgroundColor('#05060a');
 
     this.player = this.physics.add.sprite(WORLD_WIDTH / 2, WORLD_HEIGHT - 50, TEXTURES.PLAYER);
@@ -167,11 +165,18 @@ export class GameScene extends Phaser.Scene {
     this.muteKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.M);
     this.game.events.emit('sound-muted-changed', this.soundEffects.isMuted);
 
-    // Create pause overlay UI
-    this.pauseOverlay = this.add.text(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, 'PAUSED', {
+    // Create pause overlay UI (hidden by default, only shown when paused)
+    this.pauseOverlay = this.add.text(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, '', {
       fontSize: '48px',
       fontFamily: 'monospace'
     }).setOrigin(0.5);
+
+    // Add "Press any key to start" message at game load
+    this.startMessage = this.add.text(WORLD_WIDTH / 2, WORLD_HEIGHT - 100, 'PRESS ANY KEY TO START', {
+      fontSize: '32px',
+      fontFamily: 'monospace',
+      color: '#00ff00'
+    }).setOrigin(0.5).setVisible(true);
 
     this.physics.add.overlap(this.playerBullets, this.aliens, this.handlePlayerBulletHitsAlien, undefined, this);
     this.physics.add.overlap(this.alienBullets, this.player, this.handleAlienBulletHitsPlayer, undefined, this);
@@ -202,12 +207,108 @@ export class GameScene extends Phaser.Scene {
       const muted = this.soundEffects.toggle();
       this.game.events.emit('sound-muted-changed', muted);
     });
+
+    // Handle any key press to start the game when in "Press any key to start" state
+    if (!this.isGameOver) {
+      this.input.keyboard!.on('keydown', () => {
+        // If we're still showing the start message, handle starting the game
+        if (this.startMessage && this.startMessage.visible) {
+          // P key toggles pause via togglePause()
+          if (Phaser.Input.Keyboard.JustDown(this.pauseKey)) {
+            this.togglePause(); // Use P key to toggle pause (hide PAUSED, resume physics)
+          } else {
+            // Any other key starts the game by transitioning from start state to playable state
+            this.startMessage.visible = false;
+            this.isGameStarted = true; // Mark game as started - now allow alien shooting
+            this.nextAlienFireAt = 0; // Reset fire timer to normal
+          }
+        }
+      });
+    }
+  }
+
+  private resetGame(): void {
+    // Clean up all game objects before restarting
+
+    // Destroy player
+    this.player.destroy();
+
+    // Destroy and clear bullet groups
+    this.playerBullets.clear(true, true); // destroy children = true, remove from world = true
+    this.alienBullets.clear(true, true);
+    this.powerUps.clear(true, true);
+
+    // Destroy all aliens
+    const alienArray = this.aliens.getChildren();
+    for (const alien of alienArray) {
+      if (alien) {
+        (alien as Phaser.Physics.Arcade.Sprite).destroy();
+      }
+    }
+
+    // Destroy particle emitter if it exists
+    if (this.particleEmitter) {
+      this.particleEmitter.destroy();
+    }
+
+    // Destroy overlay UI elements
+    if (this.pauseOverlay) {
+      this.pauseOverlay.destroy();
+    }
+    if (this.startMessage) {
+      this.startMessage.destroy();
+    }
+
+    // Reset all game state attributes to their initial values
+    this.score = 0;
+    this.submissionId = createSubmissionId();
+    this.lives = PLAYER_STARTING_LIVES;
+    this.wave = 1;
+    this.isGameOver = false;
+    this.playerInvulnerable = false;
+    this.alienDirection = 1;
+    this.alienMoveTimer = 0;
+    this.nextAlienFireAt = Infinity; // Reset to no shooting until restart key pressed
+    this.currentWaveConfig = this.getWaveConfig(this.wave);
+    this.lastFiredAt = 0;
+    this.comboCount = 0;
+    this.comboExpiresAt = 0;
+    if (this.comboResetTimer) {
+      this.comboResetTimer.remove();
+      this.comboResetTimer = undefined;
+    }
+    this.weaponLevel = 0;
+    this.unlockedAchievements = new Set<string>();
+    this.activePowerUps.clear();
+    this.shieldVisual = undefined;
+    this.isPaused = false;
+    this.isGameStarted = false; // Reset game start flag
+
+    // Clear timer events if any exist
+    this.time.removeAllEvents();
+
+    // Show "PRESS ANY KEY TO START" message again
+    this.startMessage.setVisible(true);
+  }
+
+  private restartGame(): void {
+    // Reset all game state before restarting the scene
+    this.resetGame();
+
+    // Restart the scene - Phaser will call create() again automatically
+    // The create() method will re-initialize all UI elements and groups
+    this.events.emit('game-restarted');
+    this.scene.restart();
   }
 
   update(time: number, delta: number): void {
     if (this.isGameOver) {
+      // Clear the pause overlay before restarting
+      this.pauseOverlay.setText('');
+      
       if (Phaser.Input.Keyboard.JustDown(this.restartKey)) {
-        this.scene.restart();
+        this.restartGame();
+        return;
       }
       return;
     }
@@ -291,6 +392,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateAlienFormation(time: number, _delta: number): void {
+    // Don't allow alien movement until player presses any key to start the game
+    if (!this.isGameStarted) return;
+
     if (time < this.alienMoveTimer) return;
     this.alienMoveTimer = time + this.currentWaveConfig.moveIntervalMs;
 
@@ -318,6 +422,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateAlienFire(time: number): void {
+    // Don't allow alien shooting until player presses any key to start the game
+    if (!this.isGameStarted) return;
+
     const activeAliens = this.aliens.getChildren().filter((a) => (a as Phaser.Physics.Arcade.Sprite).active);
     if (activeAliens.length === 0) return;
 
@@ -632,15 +739,14 @@ export class GameScene extends Phaser.Scene {
     this.time.paused = this.isPaused;
     
     if (this.isPaused) {
-      // Pause the game
-      this.physics.pause();
-      this.pauseOverlay.setVisible(true);
-      // this.input.keyboard.disableGlobal(); // Not available in Phaser 3.x
+      // Pause the game - transition from "Press any key to start" to actual PAUSED state
+      this.startMessage.visible = false;
+      this.pauseOverlay.setText('PAUSED').visible = true;
     } else {
       // Resume the game
       this.physics.resume();
-      this.pauseOverlay.setVisible(false);
-      // this.input.keyboard.enableGlobal(); // Not available in Phaser 3.x
+      this.pauseOverlay.visible = false;
+
     }
 
     this.events.emit(this.isPaused ? 'paused' : 'resumed', this.score);
