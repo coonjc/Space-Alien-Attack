@@ -1,0 +1,137 @@
+# Cline File Editing Rules for Space Alien Attack Project
+
+## 🎯 Primary Rule: ALWAYS use `editor()` TOOL for ALL File Edits
+
+**NEVER** use shell commands (`Set-Content`, `Add-Content`, etc.) for file editing tasks.
+
+---
+
+## 📋 Complete Editor() Usage Guide
+
+### 1. FULL FILE REWRITE (Create or Replace Entire Content)
+```powershell
+editor(
+    path="$absolutePath", 
+    new_text=$content,  # The entire file content
+    old_text=""  # Empty string for new files; exact match for existing files
+)
+```
+
+**Example:**
+```powershell
+editor(
+    path="E:\Space Alien Attack\src\main.ts",
+    new_text=$newMainContent
+)
+```
+
+### 2. SECTION EDIT (Replace Specific Text Block)
+```powershell
+editor(
+    path="$absolutePath", 
+    new_text=$newBlock,  # The replacement content
+    old_text=$oldBlock   # EXACT MATCH required!
+)
+```
+
+**CRITICAL:** `$oldText` must match EXACTLY (including whitespace and indentation)!
+
+**Example:**
+```powershell
+# ❌ WRONG - partial match
+editor(path="file.txt", new_text="$newCode")
+
+# ✅ CORRECT - exact match with whitespace preserved
+editor(
+    path="E:\Space Alien Attack\src\utils.ts",
+    new_text="$function helper() {}",
+    old_text=$"function helper() {\n  // TODO\n}"
+)
+```
+
+### 3. INSERT BEFORE SPECIFIC LINE
+```powershell
+editor(
+    path="$absolutePath", 
+    new_text=$content,
+    insert_line=$lineNumber + 1  # One-based line number in file
+)
+```
+
+**Example:** Insert at end of file (EOF):
+```powershell
+$lineCount = ($fileContent -split '\n').Count
+editor(
+    path="E:\Space Alien Attack\config.json",
+    new_text=$fileContent,
+    insert_line=$lineCount + 1,
+    old_text=""
+)
+```
+
+---
+
+## ⚠️ CRITICAL WARNINGS
+
+### ❌ NEVER Do:
+- `Set-Content -Path ...` - Always overwrites entire file!
+- `Add-Content` for existing content edits - Only for logs/appending!
+- Assuming any shell command will "append" or "edit safely"
+- Using partial text matches for replacement
+
+### ✅ ALWAYS Do:
+1. **Use absolute paths** (e.g., `E:\Space Alien Attack\...`)
+2. **Find exact text to replace** before calling editor()
+3. **Preserve whitespace/indentation** in old_text matches
+4. **Read file first** with `read_files()` when unsure of content
+5. **Verify changes** by reading file after editing
+
+---
+
+## 🔍 Best Practices Checklist
+
+- [ ] Use absolute paths (not relative)
+- [ ] Exact match required for old_text parameter
+- [ ] Check whitespace in existing files before matching
+- [ ] Read file contents before replacing sections
+- [ ] For large edits, split into multiple small chunks
+- [ ] Verify changes work by running tests/code
+
+---
+
+## 🛠️ Available Tools Summary
+
+| Tool | Use Case |
+|------|----------|
+| `read_files()` | Get current file content (required before editing) |
+| `editor()` | **ALL file edits** (replacement, insert, full rewrite) |
+| `search_codebase()` | Find text patterns to use with editor() |
+| `composio_...` | External app integrations (Gmail, Slack, etc.) |
+
+---
+
+## 📝 Quick Reference Commands
+
+```powershell
+# Full file overwrite
+editor(path="$path", new_text=$content)
+
+# Section replace
+editor(path="$path", new_text="$new", old_text="$old")
+
+# Insert at line N
+editor(path="$path", new_text="$content", insert_line=$N)
+
+# Read before edit
+read_files(files=[{path: "$absolutePath"}])
+
+# Search to find exact text
+search_codebase(queries=["pattern_to_find"])
+```
+
+---
+
+## 💡 Remember
+
+**The editor() tool is your ONLY file editing tool!**  
+All other shell commands for file writing are obsolete in this workflow.

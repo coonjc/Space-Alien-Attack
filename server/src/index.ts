@@ -1,4 +1,5 @@
 import express from 'express';
+import type { RequestHandler } from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { env } from './lib/env';
@@ -6,6 +7,7 @@ import { authRouter } from './routes/auth';
 import { statsRouter } from './routes/stats';
 import { adminRouter } from './routes/admin';
 import { leaderboardRouter } from './routes/leaderboard';
+import { achievementsRouter } from './routes/achievements';
 
 const app = express();
 
@@ -25,14 +27,19 @@ const loginLimiter = rateLimit({
   message: { error: 'Too many login attempts. Please try again later.' }
 });
 
+// express-rate-limit resolves a separate Express type version in this workspace.
+const asExpressMiddleware = (handler: typeof registerLimiter): RequestHandler =>
+  handler as unknown as RequestHandler;
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.use('/auth/register', registerLimiter);
-app.use('/auth/login', loginLimiter);
+app.use('/auth/register', asExpressMiddleware(registerLimiter));
+app.use('/auth/login', asExpressMiddleware(loginLimiter));
 app.use('/auth', authRouter);
 app.use('/stats', statsRouter);
+app.use('/achievements', achievementsRouter);
 app.use('/leaderboard', leaderboardRouter);
 app.use('/admin', adminRouter);
 

@@ -8,44 +8,66 @@ datasource db {
 }
 
 model User {
-  id           String       @id @default(uuid())
-  email        String       @unique
-  passwordHash String
+  id               String            @id @default(uuid())
+  email            String            @unique
+  passwordHash     String
   // Simple role flag for now — structured as a boolean rather than a
   // separate Admin table so it's trivial to extend to a proper role enum
   // later without a breaking schema change.
-  isAdmin      Boolean      @default(false)
+  isAdmin          Boolean           @default(false)
   // Banned users can no longer log in (enforced in /auth/login) and any
   // existing session is rejected on the next authenticated request.
-  isBanned     Boolean      @default(false)
-  createdAt    DateTime     @default(now())
-  stats        PlayerStats?
+  isBanned         Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  stats            PlayerStats?
+  achievements     UserAchievement[]
+  scoreSubmissions ScoreSubmission[]
+}
+
+model UserAchievement {
+  userId        String
+  achievementId String
+  unlockedAt    DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, achievementId])
+  @@index([achievementId])
+}
+
+model ScoreSubmission {
+  userId       String
+  submissionId String
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, submissionId])
+  @@index([createdAt])
 }
 
 model PlayerStats {
-  userId      String   @id
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @id
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Core scoring metrics
-  highScore    Int      @default(0)
-  totalScore   Int      @default(0)
-  gamesPlayed  Int      @default(0)
-  displayName  String   @default("Anonymous")
+  highScore   Int    @default(0)
+  totalScore  Int    @default(0)
+  gamesPlayed Int    @default(0)
+  displayName String @default("Anonymous")
 
   // Wave progression tracking
-  currentWave  Int      @default(1)
-  bestWave     Int      @default(1)
+  currentWave Int @default(1)
+  bestWave    Int @default(1)
 
   // Session statistics
-  sessionTime  Int      @default(0) // milliseconds
-  aliensKilled Int      @default(0)
+  sessionTime  Int @default(0) // milliseconds
+  aliensKilled Int @default(0)
 
   // Additional performance metrics
-  accuracy     Float    @default(0.0)
-  shotsFired   Int      @default(0)
-  shotsHit     Int      @default(0)
+  accuracy   Float @default(0.0)
+  shotsFired Int   @default(0)
+  shotsHit   Int   @default(0)
 
-  updatedAt    DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 
   @@index([highScore], name: "idx_high_score")
 }

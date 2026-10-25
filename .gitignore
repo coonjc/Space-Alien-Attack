@@ -37,3 +37,5 @@ mobile/.gradle/
 .env.production
 coverage/
 issues/
+!client/issues/
+!client/issues/*.md
