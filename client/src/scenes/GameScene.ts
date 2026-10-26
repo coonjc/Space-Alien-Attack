@@ -22,6 +22,15 @@ interface WaveConfig {
   powerUpChance: number;
 }
 
+interface AlienAnimation {
+  sprite: Phaser.Physics.Arcade.Sprite;
+  leftWing: Phaser.GameObjects.Graphics;
+  rightWing: Phaser.GameObjects.Graphics;
+  leftEye: Phaser.GameObjects.Graphics;
+  rightEye: Phaser.GameObjects.Graphics;
+  color: number;
+}
+
 const WAVE_CONFIG: WaveConfig[] = [
   { rows: 3, columns: 8, moveIntervalMs: 700, stepDistance: 6, fireIntervalMs: 1600, powerUpChance: 0.05 },
   { rows: 3, columns: 8, moveIntervalMs: 650, stepDistance: 7, fireIntervalMs: 1450, powerUpChance: 0.06 },
@@ -87,6 +96,7 @@ export class GameScene extends Phaser.Scene {
   private powerUps!: Phaser.Physics.Arcade.Group;
   private playerBullets!: Phaser.Physics.Arcade.Group;
   private alienBullets!: Phaser.Physics.Arcade.Group;
+  private alienAnimations: AlienAnimation[] = [];
 
   // Particle emitter for explosions
   private particleEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -146,6 +156,7 @@ export class GameScene extends Phaser.Scene {
     this.unlockedAchievements = this.loadUnlockedAchievements();
     this.activePowerUps.clear();
     this.shieldVisual = undefined;
+    this.alienAnimations = [];
 
     this.cameras.main.setBackgroundColor('#05060a');
 
@@ -354,6 +365,9 @@ export class GameScene extends Phaser.Scene {
     }
     this.updatePowerUpLabels();
 
+    // Update alien animations (wing flapping, eye movement)
+    this.updateAlienAnimations(time);
+
     if (this.aliens.countActive(true) === 0) {
       this.advanceWave();
     }
@@ -367,10 +381,70 @@ export class GameScene extends Phaser.Scene {
         const x = ALIEN_FORMATION_LEFT + col * ALIEN_SPACING_X;
         const y = ALIEN_FORMATION_TOP + row * ALIEN_SPACING_Y;
         const texture = rowTextures[row % rowTextures.length];
-        const alien = this.aliens.create(x, y, texture) as Phaser.Physics.Arcade.Sprite;
-        alien.setData('points', (this.currentWaveConfig.rows - row) * 10);
+
+        // Create base sprite
+        const alienSprite = this.aliens.create(x, y, texture) as Phaser.Physics.Arcade.Sprite;
+        alienSprite.setData('points', (this.currentWaveConfig.rows - row) * 10);
+
+        const color = texture === TEXTURES.ALIEN_ROW_A
+          ? 0xff4dd8
+          : texture === TEXTURES.ALIEN_ROW_B
+            ? 0x9d4dff
+            : 0xffb84d;
+
+        const leftWing = this.add.graphics();
+        const rightWing = this.add.graphics();
+        const eyeLeft = this.add.graphics();
+        const eyeRight = this.add.graphics();
+
+        this.alienAnimations.push({
+          sprite: alienSprite,
+          leftWing,
+          rightWing,
+          leftEye: eyeLeft,
+          rightEye: eyeRight,
+          color
+        });
       }
     }
+  }
+
+  private updateAlienAnimations(time: number): void {
+    const ALIEN_W = 36;
+    const ALIEN_H = 28;
+    const flapPeriod = 1000 / 60 * 4;
+    const flapProgress = Math.sin(time / flapPeriod) * 0.5 + 0.5;
+    const pupilOffset = Math.sin(time / 1000) * 1.5;
+
+    this.alienAnimations = this.alienAnimations.filter((animation) => {
+      if (!animation.sprite.active) {
+        animation.leftWing.destroy();
+        animation.rightWing.destroy();
+        animation.leftEye.destroy();
+        animation.rightEye.destroy();
+        return false;
+      }
+
+      const { sprite, leftWing, rightWing, leftEye, rightEye, color } = animation;
+      leftWing.setPosition(sprite.x, sprite.y).clear().fillStyle(color, 1).fillTriangle(
+        -ALIEN_W * 0.5, ALIEN_H * (0.35 + (flapProgress - 0.5) * 0.3) - ALIEN_H / 2,
+        -ALIEN_W * 0.15, ALIEN_H * 0.2 - ALIEN_H / 2,
+        -ALIEN_W * 0.18, ALIEN_H * 0.75 - ALIEN_H / 2
+      );
+      rightWing.setPosition(sprite.x, sprite.y).clear().fillStyle(color, 1).fillTriangle(
+        ALIEN_W * 0.5, ALIEN_H * (0.35 - (flapProgress - 0.5) * 0.3) - ALIEN_H / 2,
+        ALIEN_W * 0.15, ALIEN_H * 0.2 - ALIEN_H / 2,
+        ALIEN_W * 0.18, ALIEN_H * 0.75 - ALIEN_H / 2
+      );
+
+      leftEye.setPosition(sprite.x - ALIEN_W * 0.12, sprite.y - ALIEN_H * 0.12)
+        .clear().fillStyle(0x05060a, 1).fillCircle(0, 0, 2.5)
+        .fillStyle(color, 1).fillCircle(-pupilOffset, 0, 1.5);
+      rightEye.setPosition(sprite.x + ALIEN_W * 0.12, sprite.y - ALIEN_H * 0.12)
+        .clear().fillStyle(0x05060a, 1).fillCircle(0, 0, 2.5)
+        .fillStyle(color, 1).fillCircle(-pupilOffset, 0, 1.5);
+      return true;
+    });
   }
 
   private handlePlayerMovement(time: number): void {

@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 export default defineConfig({
   root: '.',
+  base: './',
   server: {
     port: 5173,
     host: true
@@ -19,5 +20,9 @@ export default defineConfig({
         admin: resolve(__dirname, 'admin.html')
       }
     }
+  },
+  optimizeDeps: {
+    include: ['phaser'],
+    noDiscovery: true
   }
 });
