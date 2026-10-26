@@ -27,7 +27,7 @@
 | # | Task | Status | Implementation |
 |---|---|---|---|
 | 5 | Pause/resume | Complete | P toggles physics pause and the pause overlay. |
-| 6 | Power-ups | Complete | Triple shot, one-hit shield, and temporary explosive rounds; explosive kills affect nearby aliens. |
+| 6 | Power-ups | Complete | Power-ups last until another power-up or ship destroyed. Triple shot, one-hit shield, and temporary explosive rounds; explosive kills affect nearby aliens. Weapons only upgrade via EXPLOSIVE power-up (not wave progression). |
 | 7 | Particle effects | Complete | Alien deaths emit an eight-particle burst. |
 | 8 | Offline mode | Complete | Startup/periodic connectivity detection, browser online handling, local queued scores, and automatic/manual sync. |
 

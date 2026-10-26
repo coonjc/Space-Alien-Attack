@@ -28,6 +28,7 @@ export const TEXTURES = {
   PARTICLE_1: 'tex-particle-1',
   PARTICLE_2: 'tex-particle-2',
   POWERUP_TRIPLE_SHOT: 'tex-powerup-triple-shot',
+  POWERUP_DOUBLE_SHOT: 'tex-powerup-double-shot',
   POWERUP_SHIELD: 'tex-powerup-shield',
   POWERUP_EXPLOSIVE: 'tex-powerup-explosive'
 } as const;
@@ -145,6 +146,13 @@ export class BootScene extends Phaser.Scene {
     tripleShot.fillTriangle(0, 0, 8, 8, 0, 8);
     tripleShot.generateTexture(TEXTURES.POWERUP_TRIPLE_SHOT, 8, 8);
     tripleShot.destroy();
+
+    const doubleShot = this.add.graphics();
+    doubleShot.fillStyle(0xffaa00, 1); // orange for double shot
+    doubleShot.fillRect(1, 3, 6, 4); // horizontal bar
+    doubleShot.fillRect(3, 1, 2, 6); // vertical bar (X pattern to indicate dual)
+    doubleShot.generateTexture(TEXTURES.POWERUP_DOUBLE_SHOT, 8, 8);
+    doubleShot.destroy();
 
     const shield = this.add.graphics();
     shield.fillStyle(0x00ff00, 1); // green for shield

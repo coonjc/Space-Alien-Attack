@@ -8,7 +8,7 @@ All 16 tasks tracked in the issue directory now have corresponding implementatio
 
 - Restored the corrupted `GameScene.ts`.
 - Finished the four top medium-priority features: combo scoring, weapon upgrades, achievements, and local high scores.
-- Completed power-ups, including a one-hit shield and explosive area damage; added wave progression and particle effects.
+- Completed power-ups, including a one-hit shield and explosive area damage; added wave progression and particle effects. Power-ups now last until another power-up is picked up or the ship is destroyed. Weapons only upgrade via EXPLOSIVE power-ups (not wave progression). Added offline score caching, automatic connection/retry handling, manual retry, and server-side idempotency for score submissions. Power-ups now last until another power-up is picked up or the ship is destroyed. Weapons only upgrade via EXPLOSIVE power-ups (not wave progression).
 - Added offline score caching, automatic connection/retry handling, manual retry, and server-side idempotency for score submissions.
 - Added API/client leaderboard pagination and the admin user-management interface.
 - Added synthesized game effects with a persisted mute toggle.
