@@ -228,6 +228,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private resetGame(): void {
+    // Trigger explosion visual before destroying the player
+    if (this.player && this.particleEmitter) {
+      this.soundEffects.play('explosion');
+      this.particleEmitter.explode(8, this.player.x, this.player.y);
+    }
+
     // Clean up all game objects before restarting
 
     // Destroy player
@@ -493,6 +499,11 @@ export class GameScene extends Phaser.Scene {
       this.shieldVisual = undefined;
       return;
     }
+
+    // Trigger explosion visual at player position before applying damage
+    this.soundEffects.play('explosion');
+    this.particleEmitter.explode(8, this.player.x, this.player.y);
+
     this.player.setActive(true).setVisible(true).setAlpha(1);
     this.soundEffects.play('hit');
     this.lives -= 1;
@@ -503,6 +514,8 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    // Keep the player visible while indicating temporary invulnerability.
+    this.player.setActive(true).setVisible(true).setAlpha(0.5);
     this.playerInvulnerable = true;
     this.time.delayedCall(PLAYER_INVULNERABILITY_MS, () => {
       this.playerInvulnerable = false;
