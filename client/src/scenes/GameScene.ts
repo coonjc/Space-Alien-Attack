@@ -68,8 +68,8 @@ const PLAYER_STARTING_LIVES = 3;
 const PLAYER_INVULNERABILITY_MS = 1500;
 
 // Power-up type declaration
-type PowerUpType = 'TRIPLE_SHOT' | 'SHIELD' | 'EXPLOSIVE';
-type WeaponLevel = 0 | 1 | 2;
+type PowerUpType = 'TRIPLE_SHOT' | 'DOUBLE_SHOT' | 'SHIELD' | 'EXPLOSIVE';
+type WeaponLevel = 0 | 1 | 2; // 0=normal, 1=double shot, 2=spread
 
 const ACHIEVEMENTS = [
   { id: 'score_100', title: 'Rising Star', description: 'Score 100 points' },
@@ -620,14 +620,33 @@ export class GameScene extends Phaser.Scene {
     if (this.isGameOver || this.lives > 0) return;
     this.isGameOver = true;
     this.physics.pause();
+    
+    // Clear all active power-ups when ship is destroyed
+    const now = this.time.now;
+    this.activePowerUps.forEach((expireTime, type) => {
+      if (expireTime === now) {
+        this.activePowerUps.delete(type);
+      }
+      if (type === 'SHIELD') {
+        this.shieldVisual?.destroy();
+        this.shieldVisual = undefined;
+      }
+    });
+    
+    // Reset weapon level to default when ship is destroyed
+    if (this.weaponLevel > 0) {
+      this.weaponLevel = 0;
+      this.events.emit('weapon-changed', 0);
+    }
+    
     this.events.emit('game-over', this.score, this.submissionId);
   }
 
   private advanceWave(): void {
     this.wave += 1;
     this.currentWaveConfig = this.getWaveConfig(this.wave);
+    // Weapon upgrades only come from EXPLOSIVE power-ups, not wave progression
     this.nextAlienFireAt = 0;
-    this.upgradeWeapon();
     if (this.wave >= 5) this.unlockAchievement('wave_5');
     if (this.wave >= 10) this.unlockAchievement('wave_10');
     this.events.emit('wave-cleared', this.wave - 1);
@@ -670,7 +689,7 @@ export class GameScene extends Phaser.Scene {
 
   private maybeSpawnPowerUp(): void {
     if (Math.random() < this.currentWaveConfig.powerUpChance && this.aliens.countActive(true) > 0) {
-      const powerUpTypes: PowerUpType[] = ['TRIPLE_SHOT', 'SHIELD', 'EXPLOSIVE'];
+      const powerUpTypes: PowerUpType[] = ['TRIPLE_SHOT', 'DOUBLE_SHOT', 'SHIELD', 'EXPLOSIVE'];
       const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
       
       const x = Math.random() * (WORLD_WIDTH - 32) + 16;
@@ -680,6 +699,9 @@ export class GameScene extends Phaser.Scene {
       switch (type) {
         case 'TRIPLE_SHOT':
           texture = TEXTURES.POWERUP_TRIPLE_SHOT;
+          break;
+        case 'DOUBLE_SHOT':
+          texture = TEXTURES.POWERUP_DOUBLE_SHOT;
           break;
         case 'SHIELD':
           texture = TEXTURES.POWERUP_SHIELD;
@@ -734,11 +756,43 @@ export class GameScene extends Phaser.Scene {
   };
 
   private applyPowerUp(type: PowerUpType): void {
+    // Reset any existing power-up of the same category before applying new one
+    const currentExpire = this.activePowerUps.get(type);
+    if (currentExpire !== undefined) {
+      // Schedule cleanup for previous power-ups when a new one is picked up
+      // The cleanup will remove EXPLOSIVE weapon level and SHIELD visual effects
+      if (type === 'EXPLOSIVE' || type === 'TRIPLE_SHOT') {
+        this.time.addEvent({
+          delay: currentExpire - this.time.now,
+          callback: () => {
+            if (this.activePowerUps.has('EXPLOSIVE')) {
+              this.activePowerUps.delete('EXPLOSIVE');
+              // Remove explosive weapon level effect
+              this.weaponLevel = 0;
+              this.events.emit('weapon-changed', 0);
+            }
+            // Clean up SHIELD if it's the one expiring (not the new power-up type)
+            const expiringType = Object.keys(this.activePowerUps).find(t => t !== type) as PowerUpType | undefined;
+            if (expiringType === 'SHIELD') {
+              this.shieldVisual?.destroy();
+              this.shieldVisual = undefined;
+            }
+          },
+          loop: false
+        });
+      }
+    }
+    
     const expireTime = this.time.now + POWERUP_DURATION_MS;
     
     switch (type) {
       case 'TRIPLE_SHOT':
-        // Enable triple shot - add power-up flag for bullet spawning
+        // TRIPLE_SHOT powerup now upgrades weapon level (weapon progression: normal → triple → spread)
+        this.upgradeWeapon();
+        break;
+      case 'DOUBLE_SHOT':
+        // DOUBLE_SHOT powerup also upgrades weapon level (normal → double → triple → spread)
+        this.upgradeWeapon();
         break;
       case 'SHIELD':
         this.shieldVisual?.destroy();
@@ -746,6 +800,7 @@ export class GameScene extends Phaser.Scene {
           .setStrokeStyle(2, 0x66ff99, 0.9);
         break;
       case 'EXPLOSIVE':
+        // Only weapon upgrades should come from power-ups (EXPLOSIVE), not wave progression or other sources
         this.upgradeWeapon();
         break;
     }
@@ -795,7 +850,13 @@ export class GameScene extends Phaser.Scene {
     if (this.weaponLevel === 2) return;
     this.weaponLevel = this.weaponLevel === 0 ? 1 : 2;
     this.events.emit('weapon-changed', this.weaponLevel);
-    this.unlockAchievement(this.weaponLevel === 1 ? 'weapon_triple' : 'weapon_spread');
+    // weaponLevel goes from 0 -> 1 (triple) -> 2 (spread), so check before increment
+    const prevLevel = this.weaponLevel - 1;
+    if (prevLevel === 0) {
+      this.unlockAchievement('weapon_triple');
+    } else {
+      this.unlockAchievement('weapon_spread');
+    }
   }
 
   private checkScoreAchievements(): void {
