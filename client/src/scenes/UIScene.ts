@@ -132,7 +132,7 @@ export class UIScene extends Phaser.Scene {
     const onWaveCleared = (wave: number): void => {
       this.waveMessageTimer?.remove();
       this.messageText.setText(`Wave ${wave} cleared!`).setVisible(true);
-      this.waveMessageTimer = this.time.delayedCall(1200, () => {
+      this.waveMessageTimer = this.time.delayedCall(1000, () => { // 1 second delay between waves
         this.waveMessageTimer = undefined;
         this.messageText.setVisible(false);
       });

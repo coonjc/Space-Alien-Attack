@@ -65,7 +65,7 @@ const PLAYER_BULLET_SPEED = 420;
 const ALIEN_BULLET_SPEED = 220;
 const PLAYER_FIRE_COOLDOWN_MS = 300;
 const PLAYER_STARTING_LIVES = 3;
-const PLAYER_INVULNERABILITY_MS = 1500;
+const PLAYER_INVULNERABILITY_MS = 1000; // 1 second delay before player can be hit again
 
 // Power-up type declaration
 type PowerUpType = 'TRIPLE_SHOT' | 'DOUBLE_SHOT' | 'SHIELD' | 'EXPLOSIVE';
@@ -651,8 +651,13 @@ export class GameScene extends Phaser.Scene {
     if (this.wave >= 10) this.unlockAchievement('wave_10');
     this.events.emit('wave-cleared', this.wave - 1);
     this.events.emit('wave-changed', this.wave);
-    this.spawnAlienWave();
-    this.maybeSpawnPowerUp();
+
+    // Add 1 second delay before spawning the next wave
+    const spawnNextWave = () => {
+      this.spawnAlienWave();
+      this.maybeSpawnPowerUp();
+    };
+    this.time.delayedCall(1000, spawnNextWave);
   }
 
   private getWaveConfig(wave: number): WaveConfig {
