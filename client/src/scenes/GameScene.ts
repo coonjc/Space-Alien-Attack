@@ -102,6 +102,7 @@ export class GameScene extends Phaser.Scene {
   private currentWaveConfig!: WaveConfig;
 
   private lastFiredAt = 0;
+  private playerSpeedBoostExpiresAt = 0;
   private score = 0;
   private submissionId = '';
   private lives = PLAYER_STARTING_LIVES;
@@ -134,6 +135,7 @@ export class GameScene extends Phaser.Scene {
     this.nextAlienFireAt = 0;
     this.currentWaveConfig = this.getWaveConfig(this.wave);
     this.lastFiredAt = 0;
+    this.playerSpeedBoostExpiresAt = 0;
     this.isPaused = false;
     this.comboCount = 0;
     this.comboExpiresAt = 0;
@@ -179,15 +181,24 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setVisible(true);
 
     this.physics.add.overlap(this.playerBullets, this.aliens, this.handlePlayerBulletHitsAlien, undefined, this);
-    this.physics.add.overlap(this.alienBullets, this.player, this.handleAlienBulletHitsPlayer, undefined, this);
-    this.physics.add.overlap(this.aliens, this.player, this.handleAlienReachesPlayer, undefined, this);
+    this.physics.add.overlap(this.player, this.alienBullets, this.handleAlienBulletHitsPlayer, undefined, this);
+    this.physics.add.overlap(this.player, this.aliens, this.handleAlienReachesPlayer, undefined, this);
     this.physics.add.overlap(this.player, this.powerUps, this.handlePowerUpPickup, undefined, this);
 
     // Create particle emitter for explosions
     this.particleEmitter = this.add.particles(
-      WORLD_WIDTH / 2,
-      WORLD_HEIGHT / 2,
-      TEXTURES.PARTICLE_1
+      0,
+      0,
+      TEXTURES.PARTICLE_1,
+      {
+        frequency: -1,
+        lifespan: 450,
+        speed: { min: 90, max: 200 },
+        scale: { start: 2, end: 0 },
+        alpha: { start: 1, end: 0 },
+        color: [0xffff66, 0xff7700],
+        maxAliveParticles: 128
+      }
     );
 
     this.events.emit('score-changed', this.score);
@@ -325,8 +336,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (!this.player.active) {
-      this.player.setActive(true).setVisible(true);
+      this.player.setActive(true);
     }
+    this.player.setVisible(true).setAlpha(1);
     if (!this.player.body) {
       this.physics.add.existing(this.player);
       this.player.setCollideWorldBounds(true);
@@ -363,11 +375,14 @@ export class GameScene extends Phaser.Scene {
 
   private handlePlayerMovement(time: number): void {
     this.player.setVelocityX(0);
+    const speed = this.time.now < this.playerSpeedBoostExpiresAt
+      ? PLAYER_SPEED * 1.5
+      : PLAYER_SPEED;
 
     if (this.cursors.left?.isDown) {
-      this.player.setVelocityX(-PLAYER_SPEED);
+      this.player.setVelocityX(-speed);
     } else if (this.cursors.right?.isDown) {
-      this.player.setVelocityX(PLAYER_SPEED);
+      this.player.setVelocityX(speed);
     }
 
     if (this.fireKey.isDown && time > this.lastFiredAt + PLAYER_FIRE_COOLDOWN_MS) {
@@ -481,13 +496,17 @@ export class GameScene extends Phaser.Scene {
     }
   };
 
-  private handleAlienBulletHitsPlayer: ArcadePhysicsCallback = (bulletObj) => {
-    (bulletObj as Phaser.Physics.Arcade.Sprite).destroy();
+  private handleAlienBulletHitsPlayer: ArcadePhysicsCallback = (_playerObj, bulletObj) => {
+    const bullet = bulletObj as Phaser.Physics.Arcade.Sprite;
+    if (!bullet.active) return;
+    bullet.destroy();
     this.damagePlayer();
   };
 
-  private handleAlienReachesPlayer: ArcadePhysicsCallback = (alienObj) => {
-    (alienObj as Phaser.Physics.Arcade.Sprite).destroy();
+  private handleAlienReachesPlayer: ArcadePhysicsCallback = (_playerObj, alienObj) => {
+    const alien = alienObj as Phaser.Physics.Arcade.Sprite;
+    if (!alien.active) return;
+    alien.destroy();
     this.damagePlayer();
   };
 
@@ -510,12 +529,12 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('lives-changed', this.lives);
     this.unlockAchievement('first_hit_taken');
     if (this.lives <= 0) {
+      this.player.setVisible(true).setAlpha(1);
       this.triggerGameOver();
       return;
     }
 
-    // Keep the player visible while indicating temporary invulnerability.
-    this.player.setActive(true).setVisible(true).setAlpha(0.5);
+    this.player.setActive(true).setVisible(true).setAlpha(1);
     this.playerInvulnerable = true;
     this.time.delayedCall(PLAYER_INVULNERABILITY_MS, () => {
       this.playerInvulnerable = false;
@@ -625,16 +644,12 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private handlePowerUpPickup: ArcadePhysicsCallback = (powerUpObj) => {
+  private handlePowerUpPickup: ArcadePhysicsCallback = (_playerObj, powerUpObj) => {
     const powerUpSprite = powerUpObj as Phaser.Physics.Arcade.Sprite;
-    
-    // Brief speed boost effect when picking up power-up
-    this.player.setVelocityX(PLAYER_SPEED * 1.5);
-    this.time.delayedCall(500, () => {
-      if (!this.isPaused && !this.isGameOver) {
-        this.handlePlayerMovement(this.time.now); // Reset to normal movement
-      }
-    });
+    if (!powerUpSprite.active) return;
+
+    powerUpSprite.disableBody(true, true);
+    this.playerSpeedBoostExpiresAt = this.time.now + 500;
 
     // Apply power-up effects
     const type = powerUpSprite.getData('powerUpType') as PowerUpType;
