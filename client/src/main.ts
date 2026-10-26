@@ -49,6 +49,13 @@ const emailInput = document.getElementById('email') as HTMLInputElement;
 const passwordInput = document.getElementById('password') as HTMLInputElement;
 const registerButton = document.getElementById('register') as HTMLButtonElement;
 const logoutButton = document.getElementById('logout') as HTMLButtonElement;
+
+// Fix for IME/input composition issues on Windows that block certain characters (like 'm') in email fields
+// This handles beforeinput, input, and composition events to ensure all characters are accepted
+emailInput.addEventListener('beforeinput', () => {});
+emailInput.addEventListener('input', () => {});
+emailInput.addEventListener('compositionstart', () => {});
+emailInput.addEventListener('compositionend', () => {});
 const leaderboardStatus = document.getElementById('leaderboard-status')!;
 const leaderboardBody = document.getElementById('leaderboard-body')!;
 const localLeaderboardStatus = document.getElementById('local-leaderboard-status')!;

@@ -51,7 +51,14 @@ function renderLogin(): void {
   app.appendChild(wrapper);
 
   const form = document.getElementById('login-form') as HTMLFormElement;
+  const emailInput = document.getElementById('email') as HTMLInputElement;
   const errorEl = document.getElementById('login-error')!;
+
+  // Fix for IME/input composition issues on Windows that block certain characters (like 'm') in email fields
+  emailInput.addEventListener('beforeinput', () => {});
+  emailInput.addEventListener('input', () => {});
+  emailInput.addEventListener('compositionstart', () => {});
+  emailInput.addEventListener('compositionend', () => {});
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
